@@ -5,7 +5,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -28,14 +27,12 @@ import java.util.Map;
  */
 public class DuplicateFileFinder
 {
-    private HashMap<String, List<String>> fileHashesMap = new HashMap<>();
-    private Integer fileCount = 0;
-    private static Options options;
-    private CommandLine commandLine;
     /**
      * Max file size default value: 5 MB
      */
     private static final Integer DEFAULT_MAX_FILE_SIZE = 5242880;
+
+    private static Options options;
 
     /**
      * Set the CLI options.
@@ -53,6 +50,76 @@ public class DuplicateFileFinder
             newOption.setRequired(option.isRequired());
 
             options.addOption(newOption);
+        }
+    }
+    private HashMap<String, List<String>> fileHashesMap = new HashMap<>();
+    private Integer fileCount = 0;
+    private CommandLine commandLine;
+
+    public static void main(String[] args)
+    {
+        DuplicateFileFinder duplicateFileFinder = new DuplicateFileFinder();
+        CommandLineParser parser = new BasicParser();
+
+        try
+        {
+            duplicateFileFinder.setCommandLine(parser.parse(options, args));
+
+            if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HELP.getOpt()))
+            {
+                HelpFormatter helpFormatter = new HelpFormatter();
+                helpFormatter.printHelp("boo", options);
+                return;
+            }
+        }
+        catch (ParseException e)
+        {
+            System.out.println(e.getMessage());
+            HelpFormatter helpFormatter = new HelpFormatter();
+            helpFormatter.printHelp("boo", options);
+            return;
+        }
+
+        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
+        {
+            System.out.print("Doing a flat scan; i.e. not recursively scanning directories. ");
+        }
+        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HIDDEN_FILES.getOpt()))
+        {
+            System.out.println("Including hidden files in scan.");
+        }
+
+        duplicateFileFinder.scanDirectory(duplicateFileFinder.getCommandLine().getOptionValue(CliOption.DIRECTORY_TO_SCAN.getOpt()));
+        displayResults(duplicateFileFinder);
+    }
+
+    /**
+     * Display the results of the scanned files. Lists all found duplicates if any were found.
+     *
+     * @param duplicateFileFinder    The {@link com.github.skare69.boo.DuplicateFileFinder} instance which was used to scan the files.
+     */
+    private static void displayResults(DuplicateFileFinder duplicateFileFinder)
+    {
+        System.out.println(String.format("Scanned %d files", duplicateFileFinder.getFileCount()));
+        Iterator<Map.Entry<String, List<String>>> iterator = duplicateFileFinder.getFileHashesMap().entrySet().iterator();
+        while (iterator.hasNext())
+        {
+            Map.Entry<String, List<String>> entry = iterator.next();
+            if (entry.getValue().size() < 2)
+                iterator.remove();
+            else
+            {
+                System.out.println("Found duplicates: ");
+                for (String file : entry.getValue())
+                {
+                    System.out.println(file);
+                }
+            }
+        }
+
+        if (duplicateFileFinder.getFileHashesMap().isEmpty())
+        {
+            System.out.println("No duplicates found.");
         }
     }
 
@@ -106,76 +173,9 @@ public class DuplicateFileFinder
         }
     }
 
-    public static void main(String[] args)
-    {
-        DuplicateFileFinder duplicateFileFinder = new DuplicateFileFinder();
-        CommandLineParser parser = new BasicParser();
-
-        try
-        {
-            duplicateFileFinder.setCommandLine(parser.parse(options, args));
-
-            if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HELP.getOpt()))
-            {
-                HelpFormatter helpFormatter = new HelpFormatter();
-                helpFormatter.printHelp("boo", options);
-                return;
-            }
-        }
-        catch (ParseException e)
-        {
-            System.out.println(e.getMessage());
-            HelpFormatter helpFormatter = new HelpFormatter();
-            helpFormatter.printHelp("boo", options);
-            return;
-        }
-
-        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
-        {
-            System.out.print("Doing a flat scan; i.e. not recursively scanning directories. ");
-        }
-        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HIDDEN_FILES.getOpt()))
-        {
-            System.out.println("Including hidden files in scan.");
-        }
-
-        duplicateFileFinder.scanDirectory(duplicateFileFinder.getCommandLine().getOptionValue(CliOption.DIRECTORY_TO_SCAN.getOpt()));
-        displayResults(duplicateFileFinder);
-    }
-
     private boolean isVerbose()
     {
         return getCommandLine().hasOption(CliOption.VERBOSE_OUTPUT.getOpt());
-    }
-
-    /**
-     * Display the results of the scanned files. Lists all found duplicates if any were found.
-     *
-     * @param duplicateFileFinder    The {@link com.github.skare69.boo.DuplicateFileFinder} instance which was used to scan the files.
-     */
-    private static void displayResults(DuplicateFileFinder duplicateFileFinder)
-    {
-        System.out.println(String.format("Scanned %d files", duplicateFileFinder.getFileCount()));
-        Iterator<Map.Entry<String, List<String>>> iterator = duplicateFileFinder.getFileHashesMap().entrySet().iterator();
-        while (iterator.hasNext())
-        {
-            Map.Entry<String, List<String>> entry = iterator.next();
-            if (entry.getValue().size() < 2)
-                iterator.remove();
-            else
-            {
-                System.out.println("Found duplicates: ");
-                for (String file : entry.getValue())
-                {
-                    System.out.println(file);
-                }
-            }
-        }
-
-        if (duplicateFileFinder.getFileHashesMap().isEmpty())
-        {
-            System.out.println("No duplicates found.");
-        }
     }
 
     /**
