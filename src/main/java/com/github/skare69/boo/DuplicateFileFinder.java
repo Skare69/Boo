@@ -114,6 +114,7 @@ public class DuplicateFileFinder
                 {
                     System.out.println(file);
                 }
+                System.out.println();
             }
         }
 
