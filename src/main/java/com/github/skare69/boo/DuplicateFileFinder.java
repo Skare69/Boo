@@ -4,6 +4,8 @@ import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -39,14 +41,14 @@ public class DuplicateFileFinder
         options = new Options();
         for (CliOption option : CliOption.values())
         {
+            Option newOption = new Option(option.getOpt(), option.getHasArg(), option.getDescription());
             if (option.getLongOpt() != null)
             {
-                options.addOption(option.getOpt(), option.getLongOpt(), option.getHasArg(), option.getDescription());
+                newOption.setLongOpt(option.getLongOpt());
             }
-            else
-            {
-                options.addOption(option.getOpt(), option.getHasArg(), option.getDescription());
-            }
+            newOption.setRequired(option.isRequired());
+
+            options.addOption(newOption);
         }
     }
 
@@ -124,13 +126,22 @@ public class DuplicateFileFinder
             return;
         }
 
+        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
+        {
+            System.out.print("Doing a flat scan; i.e. not recursively scanning directories. ");
+        }
         if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HIDDEN_FILES.getOpt()))
         {
             System.out.println("Including hidden files in scan.");
         }
 
-        duplicateFileFinder.scanDirectory(".");
+        duplicateFileFinder.scanDirectory(duplicateFileFinder.getCommandLine().getOptionValue(CliOption.DIRECTORY_TO_SCAN.getOpt()));
         displayResults(duplicateFileFinder);
+    }
+
+    private boolean isVerbose()
+    {
+        return getCommandLine().hasOption(CliOption.VERBOSE_OUTPUT.getOpt());
     }
 
     /**
@@ -182,6 +193,10 @@ public class DuplicateFileFinder
                 }
                 if (file.isFile())
                 {
+                    if (isVerbose())
+                    {
+                        System.out.println(String.format("Scanning file %s", file.getAbsolutePath()));
+                    }
                     incrementFileCount();
                     try
                     {
@@ -194,6 +209,10 @@ public class DuplicateFileFinder
                 }
                 else if (file.isDirectory())
                 {
+                    if (isVerbose())
+                    {
+                        System.out.println(String.format("Scanning directory %s", file.getAbsolutePath()));
+                    }
                     scanDirectory(file);
                 }
             }
@@ -219,6 +238,10 @@ public class DuplicateFileFinder
     private void scanDirectory(String directoryPath)
     {
         File[] filesInDirectory = getFilesInDirectory(directoryPath);
+        if (isVerbose())
+        {
+            System.out.println(String.format("Scanning files in directory: %s", directoryPath));
+        }
         scanFilesInDirectory(filesInDirectory);
     }
 
@@ -257,12 +280,16 @@ public class DuplicateFileFinder
     private enum CliOption
     {
         HELP("h", "help", false, "display this help message"),
-        HIDDEN_FILES("f", false, "include hidden files (default: false)");
+        HIDDEN_FILES("f", false, "include hidden files (default: false)"),
+        DIRECTORY_TO_SCAN("t", "target", true, "target directory to scan", true),
+        FLAT_SCAN("f", "flat", false, "do a flat scan of the provided directory only; i.e. no recursion (default: false)"),
+        VERBOSE_OUTPUT("v", "verbose", false, "print a verbose output of what's happening");
 
         private String opt;
         private String longOpt;
         private boolean hasArg;
         private String description;
+        private boolean required;
 
         CliOption(String opt, boolean hasArg, String description)
         {
@@ -277,6 +304,15 @@ public class DuplicateFileFinder
             this.longOpt = longOpt;
             this.hasArg = hasArg;
             this.description = description;
+        }
+
+        CliOption(String opt, String longOpt, boolean hasArg, String description, boolean required)
+        {
+            this.opt = opt;
+            this.longOpt = longOpt;
+            this.hasArg = hasArg;
+            this.description = description;
+            this.required = required;
         }
 
         public String getOpt()
@@ -297,6 +333,11 @@ public class DuplicateFileFinder
         public String getDescription()
         {
             return description;
+        }
+
+        public boolean isRequired()
+        {
+            return required;
         }
     }
 }

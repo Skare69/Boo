@@ -6,7 +6,7 @@
 
     <groupId>com.github.skare69</groupId>
     <artifactId>boo</artifactId>
-    <version>0.1</version>
+    <version>0.2</version>
     <dependencies>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -24,16 +24,21 @@
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.github.skare69.boo.DuplicateFileFinder</mainClass>
+                        </manifest>
+                    </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
                 </configuration>
                 <executions>
                     <execution>
-                        <id>simple-command</id>
+                        <id>assemble-single</id>
                         <phase>package</phase>
                         <goals>
-                            <goal>attached</goal>
+                            <goal>single</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -41,6 +46,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.0</version>
                 <configuration>
                     <source>1.7</source>
                     <target>1.7</target>
