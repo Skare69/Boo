@@ -6,7 +6,11 @@
 
     <groupId>com.github.skare69</groupId>
     <artifactId>boo</artifactId>
-    <version>0.3-SNAPSHOT</version>
+    <version>${major-version}.${minor-version}-SNAPSHOT</version>
+    <properties>
+        <major-version>0</major-version>
+        <minor-version>3</minor-version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -25,6 +29,7 @@
         </dependency>
     </dependencies>
     <build>
+        <finalName>boo</finalName>
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -56,6 +61,46 @@
                     <source>1.7</source>
                     <target>1.7</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>1.7.4</version>
+                <executions>
+                    <execution>
+                        <id>l4j-clui</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>launch4j</goal>
+                        </goals>
+                        <configuration>
+                            <headerType>console</headerType>
+                            <jar>${project.build.directory}/${artifactId}-${version}-jar-with-dependencies.jar</jar>
+                            <outfile>${project.build.directory}/${build.finalName}.exe</outfile>
+                            <downloadUrl>http://java.com/download</downloadUrl>
+                            <classPath>
+                                <mainClass>com.github.skare69.boo.DuplicateFileFinder</mainClass>
+                                <preCp>anything</preCp>
+                            </classPath>
+                            <icon>src/main/resources/${build.finalName}.ico</icon>
+                            <jre>
+                                <minVersion>1.7.0</minVersion>
+                                <jdkPreference>preferJre</jdkPreference>
+                            </jre>
+                            <versionInfo>
+                                <fileVersion>${major-version}.${minor-version}.0.0</fileVersion>
+                                <txtFileVersion>${version}</txtFileVersion>
+                                <fileDescription>A simple tool to find duplicated files.</fileDescription>
+                                <copyright>2015 github.com/Skare69</copyright>
+                                <productVersion>${major-version}.${minor-version}.0.0</productVersion>
+                                <txtProductVersion>${major-version}.${minor-version}.0.0</txtProductVersion>
+                                <productName>${build.finalName}</productName>
+                                <internalName>${build.finalName}</internalName>
+                                <originalFilename>${build.finalName}.exe</originalFilename>
+                            </versionInfo>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
