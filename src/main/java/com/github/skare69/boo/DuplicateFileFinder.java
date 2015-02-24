@@ -32,6 +32,10 @@ public class DuplicateFileFinder
     private Integer fileCount = 0;
     private static Options options;
     private CommandLine commandLine;
+    /**
+     * Max file size default value: 5 MB
+     */
+    private static final Integer DEFAULT_MAX_FILE_SIZE = 5242880;
 
     /**
      * Set the CLI options.
@@ -191,6 +195,21 @@ public class DuplicateFileFinder
                     if (!commandLine.hasOption(CliOption.HIDDEN_FILES.getOpt()))
                         continue;
                 }
+                Integer maxFileSize = DEFAULT_MAX_FILE_SIZE;
+                String maxFileSizeOptionValue = getCommandLine().getOptionValue(CliOption.MAX_FILE_SIZE.getOpt());
+                if (maxFileSizeOptionValue != null)
+                {
+                    maxFileSize = Integer.valueOf(maxFileSizeOptionValue);
+                }
+                if (file.length() > maxFileSize)
+                {
+                    if (isVerbose())
+                    {
+                        System.out.println(String.format("Skipping file %s due to file size (file: %d, max: %d)", file.getAbsolutePath(),
+                         file.length(), maxFileSize));
+                    }
+                    continue;
+                }
                 if (file.isFile())
                 {
                     if (isVerbose())
@@ -283,7 +302,8 @@ public class DuplicateFileFinder
         HIDDEN_FILES("f", false, "include hidden files (default: false)"),
         DIRECTORY_TO_SCAN("t", "target", true, "target directory to scan", true),
         FLAT_SCAN("f", "flat", false, "do a flat scan of the provided directory only; i.e. no recursion (default: false)"),
-        VERBOSE_OUTPUT("v", "verbose", false, "print a verbose output of what's happening");
+        VERBOSE_OUTPUT("v", "verbose", false, "print a verbose output of what's happening"),
+        MAX_FILE_SIZE("m", "max", true, "the maximum size of a file to scan (default 5 MB)");
 
         private String opt;
         private String longOpt;
