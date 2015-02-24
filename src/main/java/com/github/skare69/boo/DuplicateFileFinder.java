@@ -294,8 +294,8 @@ public class DuplicateFileFinder
         HIDDEN_FILES("f", false, "include hidden files (default: false)"),
         DIRECTORY_TO_SCAN("t", "target", true, "target directory to scan", true),
         FLAT_SCAN("f", "flat", false, "do a flat scan of the provided directory only; i.e. no recursion (default: false)"),
-        VERBOSE_OUTPUT("v", "verbose", false, "print a verbose output of what's happening"),
-        MAX_FILE_SIZE("m", "max", true, "the maximum size of a file to scan in bytes (default 5 MB)");
+        VERBOSE_OUTPUT("v", "verbose", false, "print a verbose output of what's happening (default: false)"),
+        MAX_FILE_SIZE("m", "max", true, "the maximum size of a file to scan in bytes (default: 5 MB)");
 
         private String opt;
         private String longOpt;
