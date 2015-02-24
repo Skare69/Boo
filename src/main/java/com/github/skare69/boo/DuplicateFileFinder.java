@@ -8,6 +8,9 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,6 +30,7 @@ import java.util.Map;
  */
 public class DuplicateFileFinder
 {
+    private static Logger logger = Logger.getLogger(DuplicateFileFinder.class);
     /**
      * Max file size default value: 5 MB
      */
@@ -74,19 +78,23 @@ public class DuplicateFileFinder
         }
         catch (ParseException e)
         {
-            System.out.println(e.getMessage());
+            logger.info(e.getMessage());
             HelpFormatter helpFormatter = new HelpFormatter();
             helpFormatter.printHelp("boo", options);
             return;
         }
 
+        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.VERBOSE_OUTPUT.getOpt()))
+        {
+            LogManager.getRootLogger().setLevel(Level.DEBUG);
+        }
         if (duplicateFileFinder.getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
         {
-            System.out.print("Doing a flat scan; i.e. not recursively scanning directories. ");
+            logger.info("Doing a flat scan; i.e. not recursively scanning directories. ");
         }
         if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HIDDEN_FILES.getOpt()))
         {
-            System.out.println("Including hidden files in scan.");
+            logger.info("Including hidden files in scan.");
         }
 
         duplicateFileFinder.scanDirectory(duplicateFileFinder.getCommandLine().getOptionValue(CliOption.DIRECTORY_TO_SCAN.getOpt()));
@@ -100,7 +108,7 @@ public class DuplicateFileFinder
      */
     private static void displayResults(DuplicateFileFinder duplicateFileFinder)
     {
-        System.out.println(String.format("Scanned %d files", duplicateFileFinder.getFileCount()));
+        logger.info(String.format("Scanned %d files", duplicateFileFinder.getFileCount()));
         Iterator<Map.Entry<String, List<String>>> iterator = duplicateFileFinder.getFileHashesMap().entrySet().iterator();
         while (iterator.hasNext())
         {
@@ -109,18 +117,18 @@ public class DuplicateFileFinder
                 iterator.remove();
             else
             {
-                System.out.println("Found duplicates: ");
+                logger.info("Found duplicates");
                 for (String file : entry.getValue())
                 {
-                    System.out.println(file);
+                    logger.info("* " + file);
                 }
-                System.out.println();
+                logger.info(""); // pseudo new line as the logger automatically inserts a line separator after each log message
             }
         }
 
         if (duplicateFileFinder.getFileHashesMap().isEmpty())
         {
-            System.out.println("No duplicates found.");
+            logger.info("No duplicates found.");
         }
     }
 
@@ -174,11 +182,6 @@ public class DuplicateFileFinder
         }
     }
 
-    private boolean isVerbose()
-    {
-        return getCommandLine().hasOption(CliOption.VERBOSE_OUTPUT.getOpt());
-    }
-
     /**
      * Recursively scan the provided files. If an entry is a file it is added to the {@code fileHashesMap}. If it is a directory it is
      * also scanned by this method.
@@ -204,19 +207,13 @@ public class DuplicateFileFinder
                 }
                 if (file.length() > maxFileSize)
                 {
-                    if (isVerbose())
-                    {
-                        System.out.println(String.format("Skipping file %s due to file size (file: %d, max: %d)", file.getAbsolutePath(),
-                         file.length(), maxFileSize));
-                    }
+                    logger.debug(String.format("Skipping file %s due to file size (file: %d, max: %d)", file.getAbsolutePath(),
+                            file.length(), maxFileSize));
                     continue;
                 }
                 if (file.isFile())
                 {
-                    if (isVerbose())
-                    {
-                        System.out.println(String.format("Scanning file %s", file.getAbsolutePath()));
-                    }
+                    logger.debug(String.format("Scanning file %s", file.getAbsolutePath()));
                     incrementFileCount();
                     try
                     {
@@ -229,10 +226,7 @@ public class DuplicateFileFinder
                 }
                 else if (file.isDirectory())
                 {
-                    if (isVerbose())
-                    {
-                        System.out.println(String.format("Scanning directory %s", file.getAbsolutePath()));
-                    }
+                    logger.debug(String.format("Scanning directory %s", file.getAbsolutePath()));
                     scanDirectory(file);
                 }
             }
@@ -258,10 +252,7 @@ public class DuplicateFileFinder
     private void scanDirectory(String directoryPath)
     {
         File[] filesInDirectory = getFilesInDirectory(directoryPath);
-        if (isVerbose())
-        {
-            System.out.println(String.format("Scanning files in directory: %s", directoryPath));
-        }
+        logger.debug(String.format("Scanning files in directory: %s", directoryPath));
         scanFilesInDirectory(filesInDirectory);
     }
 
