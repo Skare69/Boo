@@ -28,6 +28,25 @@
             <version>1.2.14</version>
         </dependency>
     </dependencies>
+    <profiles>
+        <profile>
+            <id>launch4j.build.console</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <header-type>console</header-type>
+                <main-class>com.github.skare69.boo.DuplicateFileFinder</main-class>
+            </properties>
+        </profile>
+        <profile>
+            <id>launch4j.build.gui</id>
+            <properties>
+                <header-type>gui</header-type>
+                <main-class>com.github.skare69.boo.Gui</main-class>
+            </properties>
+        </profile>
+    </profiles>
     <build>
         <finalName>boo</finalName>
         <plugins>
@@ -36,7 +55,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.github.skare69.boo.DuplicateFileFinder</mainClass>
+                            <mainClass>${main-class}</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
@@ -74,12 +93,12 @@
                             <goal>launch4j</goal>
                         </goals>
                         <configuration>
-                            <headerType>console</headerType>
+                            <headerType>${header-type}</headerType>
                             <jar>${project.build.directory}/${project.artifactId}-jar-with-dependencies.jar</jar>
                             <outfile>${project.build.directory}/${project.build.finalName}.exe</outfile>
                             <downloadUrl>http://java.com/download</downloadUrl>
                             <classPath>
-                                <mainClass>com.github.skare69.boo.DuplicateFileFinder</mainClass>
+                                <mainClass>${main-class}</mainClass>
                                 <preCp>anything</preCp>
                             </classPath>
                             <icon>src/main/resources/${project.build.finalName}.ico</icon>
