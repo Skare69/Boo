@@ -60,16 +60,15 @@ public class DuplicateFileFinder
     private Integer fileCount = 0;
     private CommandLine commandLine;
 
-    public static void main(String[] args)
+    public DuplicateFileFinder(String[] args)
     {
-        DuplicateFileFinder duplicateFileFinder = new DuplicateFileFinder();
         CommandLineParser parser = new BasicParser();
 
         try
         {
-            duplicateFileFinder.setCommandLine(parser.parse(options, args));
+            setCommandLine(parser.parse(options, args));
 
-            if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HELP.getOpt()))
+            if (getCommandLine().hasOption(CliOption.HELP.getOpt()))
             {
                 HelpFormatter helpFormatter = new HelpFormatter();
                 helpFormatter.printHelp("boo", options);
@@ -84,20 +83,25 @@ public class DuplicateFileFinder
             return;
         }
 
-        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.VERBOSE_OUTPUT.getOpt()))
+        if (getCommandLine().hasOption(CliOption.VERBOSE_OUTPUT.getOpt()))
         {
             LogManager.getRootLogger().setLevel(Level.DEBUG);
         }
-        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
+        if (getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
         {
             logger.info("Doing a flat scan; i.e. not recursively scanning directories. ");
         }
-        if (duplicateFileFinder.getCommandLine().hasOption(CliOption.HIDDEN_FILES.getOpt()))
+        if (getCommandLine().hasOption(CliOption.HIDDEN_FILES.getOpt()))
         {
             logger.info("Including hidden files in scan.");
         }
+    }
 
-        duplicateFileFinder.scanDirectory(duplicateFileFinder.getCommandLine().getOptionValue(CliOption.DIRECTORY_TO_SCAN.getOpt()));
+    public static void main(String[] args)
+    {
+        DuplicateFileFinder duplicateFileFinder = new DuplicateFileFinder(args);
+
+        duplicateFileFinder.scanDirectory();
         displayResults(duplicateFileFinder);
     }
 
@@ -106,7 +110,7 @@ public class DuplicateFileFinder
      *
      * @param duplicateFileFinder    The {@link com.github.skare69.boo.DuplicateFileFinder} instance which was used to scan the files.
      */
-    private static void displayResults(DuplicateFileFinder duplicateFileFinder)
+    public static void displayResults(DuplicateFileFinder duplicateFileFinder)
     {
         logger.info(String.format("Scanned %d files", duplicateFileFinder.getFileCount()));
         Iterator<Map.Entry<String, List<String>>> iterator = duplicateFileFinder.getFileHashesMap().entrySet().iterator();
@@ -244,12 +248,17 @@ public class DuplicateFileFinder
         scanFilesInDirectory(filesInDirectory);
     }
 
+    public void scanDirectory()
+    {
+        scanDirectory(getCommandLine().getOptionValue(CliOption.DIRECTORY_TO_SCAN.getOpt()));
+    }
+
     /**
      * Scan the specified directory for file duplicates.
      *
      * @param directoryPath    the directory to scan
      */
-    private void scanDirectory(String directoryPath)
+    public void scanDirectory(String directoryPath)
     {
         File[] filesInDirectory = getFilesInDirectory(directoryPath);
         logger.debug(String.format("Scanning files in directory: %s", directoryPath));
@@ -291,7 +300,7 @@ public class DuplicateFileFinder
     private enum CliOption
     {
         HELP("h", "help", false, "display this help message"),
-        HIDDEN_FILES("f", false, "include hidden files (default: false)"),
+        HIDDEN_FILES("s", false, "include hidden files (default: false)"),
         DIRECTORY_TO_SCAN("t", "target", true, "target directory to scan", true),
         FLAT_SCAN("f", "flat", false, "do a flat scan of the provided directory only; i.e. no recursion (default: false)"),
         VERBOSE_OUTPUT("v", "verbose", false, "print a verbose output of what's happening (default: false)"),
