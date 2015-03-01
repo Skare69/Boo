@@ -34,7 +34,7 @@ public class DuplicateFileFinder
     /**
      * Max file size default value: 5 MB
      */
-    private static final Integer DEFAULT_MAX_FILE_SIZE = 5242880;
+    private static final Long DEFAULT_MAX_FILE_SIZE = 5242880l;
 
     private static Options options;
 
@@ -62,8 +62,10 @@ public class DuplicateFileFinder
 
     public DuplicateFileFinder(String[] args)
     {
-        CommandLineParser parser = new BasicParser();
+        if (args == null)
+            return;
 
+        CommandLineParser parser = new BasicParser();
         try
         {
             setCommandLine(parser.parse(options, args));
@@ -105,6 +107,18 @@ public class DuplicateFileFinder
         displayResults(duplicateFileFinder);
     }
 
+    public Map<String, List<String>> processScannedFileMap()
+    {
+        Iterator<Map.Entry<String, List<String>>> iterator = getFileHashesMap().entrySet().iterator();
+        while (iterator.hasNext())
+        {
+            Map.Entry<String, List<String>> entry = iterator.next();
+            if (entry.getValue().size() < 2)
+                iterator.remove();
+        }
+        return getFileHashesMap();
+    }
+
     /**
      * Display the results of the scanned files. Lists all found duplicates if any were found.
      *
@@ -112,22 +126,16 @@ public class DuplicateFileFinder
      */
     public static void displayResults(DuplicateFileFinder duplicateFileFinder)
     {
-        logger.info(String.format("Scanned %d files", duplicateFileFinder.getFileCount()));
-        Iterator<Map.Entry<String, List<String>>> iterator = duplicateFileFinder.getFileHashesMap().entrySet().iterator();
-        while (iterator.hasNext())
+        duplicateFileFinder.processScannedFileMap();
+
+        for (Map.Entry<String, List<String>> entry : duplicateFileFinder.getFileHashesMap().entrySet())
         {
-            Map.Entry<String, List<String>> entry = iterator.next();
-            if (entry.getValue().size() < 2)
-                iterator.remove();
-            else
+            logger.info("Found duplicates");
+            for (String file : entry.getValue())
             {
-                logger.info("Found duplicates");
-                for (String file : entry.getValue())
-                {
-                    logger.info("* " + file);
-                }
-                logger.info(""); // pseudo new line as the logger automatically inserts a line separator after each log message
+                logger.info("* " + file);
             }
+            logger.info(""); // pseudo new line as the logger automatically inserts a line separator after each log message
         }
 
         if (duplicateFileFinder.getFileHashesMap().isEmpty())
@@ -156,7 +164,7 @@ public class DuplicateFileFinder
      */
     private void incrementFileCount()
     {
-        this.fileCount++;
+        fileCount++;
     }
 
     public HashMap<String, List<String>> getFileHashesMap()
@@ -203,11 +211,11 @@ public class DuplicateFileFinder
                     if (!commandLine.hasOption(CliOption.HIDDEN_FILES.getOpt()))
                         continue;
                 }
-                Integer maxFileSize = DEFAULT_MAX_FILE_SIZE;
+                Long maxFileSize = DEFAULT_MAX_FILE_SIZE;
                 String maxFileSizeOptionValue = getCommandLine().getOptionValue(CliOption.MAX_FILE_SIZE.getOpt());
                 if (maxFileSizeOptionValue != null)
                 {
-                    maxFileSize = Integer.valueOf(maxFileSizeOptionValue);
+                    maxFileSize = Long.valueOf(maxFileSizeOptionValue);
                 }
                 if (file.length() > maxFileSize)
                 {
@@ -230,6 +238,10 @@ public class DuplicateFileFinder
                 }
                 else if (file.isDirectory())
                 {
+                    if (getCommandLine().hasOption(CliOption.FLAT_SCAN.getOpt()))
+                    {
+                        return;
+                    }
                     logger.debug(String.format("Scanning directory %s", file.getAbsolutePath()));
                     scanDirectory(file);
                 }
@@ -263,6 +275,7 @@ public class DuplicateFileFinder
         File[] filesInDirectory = getFilesInDirectory(directoryPath);
         logger.debug(String.format("Scanning files in directory: %s", directoryPath));
         scanFilesInDirectory(filesInDirectory);
+        logger.info(String.format("Scan finished: %d files scanned.", getFileCount()));
     }
 
     /**
@@ -292,6 +305,27 @@ public class DuplicateFileFinder
             return directory.listFiles();
         else
             return new File[]{};
+    }
+
+    /**
+     * Re-initialize this service. Read new {@code args} and reset fields to default values.
+     *
+     * @param args The new arguments to use.
+     */
+    public void reInitializeConfig(String[] args)
+    {
+        fileHashesMap = new HashMap<>();
+        fileCount = 0;
+
+        CommandLineParser parser = new BasicParser();
+        try
+        {
+            setCommandLine(parser.parse(options, args));
+        }
+        catch (ParseException e)
+        {
+            logger.error(e);
+        }
     }
 
     /**

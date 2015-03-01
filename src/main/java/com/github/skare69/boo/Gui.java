@@ -3,11 +3,19 @@ package com.github.skare69.boo;
 import org.apache.log4j.Logger;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The Java Swing based GUI for Boo.
@@ -23,24 +31,38 @@ public class Gui
     private static Logger logger = Logger.getLogger(Gui.class);
 
     public static final String NAME = "Boo";
-    private FlowLayout flowLayout = new FlowLayout();
 
-    private JButton buttonChoosePathToScan;
     private JFileChooser fileChooserPathToScan;
+    private JButton buttonChoosePathToScan;
     private JButton buttonStartScan;
     private JCheckBox checkBoxNotFlat;
     private JCheckBox checkBoxHidden;
-    private JComboBox comboBoxFileSizes;
+    private JComboBox<String> comboBoxFileSizes;
     private JLabel labelMaxFileSize;
     private JLabel labelPathToScan;
     private JLabel labelResults;
-    private JList listResults;
+    private JList<String> listResults;
+    private JList<String> listResultDetails;
     private JPanel panelAll;
-    private JScrollPane scrollPaneListResults;
     private JSeparator separator;
     private JTextField textFieldMaxFileSize;
     private JTextField textFieldPathToScan;
     private JPanel titledPanelOptions;
+    private JPanel panelRun;
+    private JButton buttonProgressDetails;
+    private JLabel labelScanProgress;
+    private JScrollPane scrollPaneProgressResults;
+    private JScrollPane scrollPaneResults;
+    private JSeparator separatorProgressResults;
+    private JTextArea textAreaProgressResults;
+    private JPanel panelResults;
+    private JPanel panelResultsDetail;
+    private DefaultListModel<String> resultsListModel;
+    private DefaultListModel<String> resultDetailsListModel;
+    private JScrollPane scrollPaneResultDetails;
+    private final DuplicateFileFinder duplicateFileFinder = new DuplicateFileFinder(null);
+    private JButton buttonShow;
+    private JButton buttonDelete;
 
     public Gui() throws HeadlessException
     {
@@ -72,10 +94,11 @@ public class Gui
 
     private void initComponents()
     {
-        setMinimumSize(new Dimension(411, 355));
+        setMinimumSize(new Dimension(811, 455));
         setLocationRelativeTo(null);
 
         panelAll = new JPanel();
+        panelRun = new JPanel();
         textFieldPathToScan = new JTextField();
         buttonChoosePathToScan = new JButton();
         fileChooserPathToScan = new JFileChooser();
@@ -86,11 +109,41 @@ public class Gui
         checkBoxNotFlat = new JCheckBox();
         labelMaxFileSize = new JLabel();
         textFieldMaxFileSize = new JTextField();
-        comboBoxFileSizes = new JComboBox();
+        comboBoxFileSizes = new JComboBox<>();
         labelResults = new JLabel();
         separator = new JSeparator();
-        scrollPaneListResults = new JScrollPane();
-        listResults = new JList();
+
+        buttonShow = new JButton();
+        buttonShow.setText("Show");
+        buttonShow.setEnabled(false);
+        buttonShow.addActionListener(this);
+
+        buttonDelete = new JButton();
+        buttonDelete.setText("Delete");
+        buttonDelete.setEnabled(false);
+        buttonDelete.addActionListener(this);
+
+        labelScanProgress = new JLabel();
+        scrollPaneProgressResults = new JScrollPane();
+
+        getRootPane().setDefaultButton(buttonStartScan);
+
+        GuiLoggingAppender guiLoggingAppender = new GuiLoggingAppender();
+        guiLoggingAppender.setTextArea(new JTextArea());
+        textAreaProgressResults = guiLoggingAppender.getTextArea();
+
+        Logger.getRootLogger().addAppender(guiLoggingAppender);
+
+        buttonProgressDetails = new JButton();
+        separatorProgressResults = new JSeparator();
+        scrollPaneResults = new JScrollPane();
+        scrollPaneResultDetails = new JScrollPane();
+        listResults = new JList<>();
+        listResultDetails = new JList<>();
+        panelResults = new JPanel();
+        panelResults.setVisible(false);
+        panelResultsDetail = new JPanel();
+        panelRun.setVisible(false);
 
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
@@ -101,7 +154,7 @@ public class Gui
 
         fileChooserPathToScan.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         fileChooserPathToScan.setAcceptAllFileFilterUsed(false);
-        fileChooserPathToScan.setCurrentDirectory(new File("."));
+        fileChooserPathToScan.setCurrentDirectory(new File(""));
 
         buttonStartScan.setText("Start scan");
         buttonStartScan.addActionListener(this);
@@ -109,39 +162,17 @@ public class Gui
         titledPanelOptions.setBorder(BorderFactory.createTitledBorder("Options"));
 
         checkBoxHidden.setText("Include hidden files");
-        checkBoxHidden.addActionListener(new java.awt.event.ActionListener()
-        {
-            public void actionPerformed(java.awt.event.ActionEvent evt)
-            {
-                checkBoxHiddenActionPerformed(evt);
-            }
-        });
 
         checkBoxNotFlat.setSelected(true);
         checkBoxNotFlat.setText("Include sub-directories");
-        checkBoxNotFlat.addActionListener(new java.awt.event.ActionListener()
-        {
-            public void actionPerformed(java.awt.event.ActionEvent evt)
-            {
-                checkBoxFlatActionPerformed(evt);
-            }
-        });
 
         labelMaxFileSize.setText("Maximum file size to scan");
 
         textFieldMaxFileSize.setHorizontalAlignment(JTextField.CENTER);
         textFieldMaxFileSize.setText("5");
-        textFieldMaxFileSize.addActionListener(new java.awt.event.ActionListener()
-        {
-            public void actionPerformed(java.awt.event.ActionEvent evt)
-            {
-                textFieldMaxFileSizeActionPerformed(evt);
-            }
-        });
 
-        comboBoxFileSizes.setModel(new DefaultComboBoxModel(new String[]{MaxFileSizes.KILO_BYTE.getValue(), MaxFileSizes.MEGA_BYTE
-                .getValue(),
-                MaxFileSizes.GIGA_BYTE.getValue()}));
+        comboBoxFileSizes.setModel(new DefaultComboBoxModel<>(new String[]{MaxFileSizes.KILO_BYTE.getValue(), MaxFileSizes.MEGA_BYTE
+                .getValue(), MaxFileSizes.GIGA_BYTE.getValue()}));
         comboBoxFileSizes.setSelectedIndex(1);
 
         GroupLayout titledPanelOptionsLayout = new GroupLayout(titledPanelOptions);
@@ -178,50 +209,182 @@ public class Gui
                                 .addContainerGap(GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        labelResults.setText("Results");
+        labelScanProgress.setText("Scan in progress...");
 
-        listResults.setModel(new AbstractListModel()
+        textAreaProgressResults.setColumns(20);
+        textAreaProgressResults.setRows(15);
+        textAreaProgressResults.setEditable(false);
+        textAreaProgressResults.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        DefaultCaret caret = (DefaultCaret)textAreaProgressResults.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+        scrollPaneProgressResults.setViewportView(textAreaProgressResults);
+        scrollPaneProgressResults.setVisible(false);
+
+        buttonProgressDetails.setText("Show Details");
+        buttonProgressDetails.addActionListener(this);
+
+        labelResults.setText("Duplicated files found:");
+
+        resultsListModel = new DefaultListModel<>();
+        listResults.setModel(resultsListModel);
+        scrollPaneResults.setViewportView(listResults);
+        listResults.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        listResults.addListSelectionListener(new ListSelectionListener()
         {
-            String[] strings = {"Item 1", "Item 2", "Item 3", "Item 4", "Item 5"};
-
-            public int getSize()
+            @Override
+            public void valueChanged(ListSelectionEvent e)
             {
-                return strings.length;
-            }
+                if (!e.getValueIsAdjusting())
+                {
+                    Object selectedObject = ((JList)e.getSource()).getSelectedValue();
+                    if (selectedObject == null)
+                    {
+                        resultDetailsListModel.clear();
+                        return;
+                    }
 
-            public Object getElementAt(int i)
-            {
-                return strings[i];
+                    resultDetailsListModel.clear();
+                    String selectedValue = selectedObject.toString();
+                    if (duplicateFileFinder.getFileHashesMap().containsKey(selectedValue))
+                    {
+                        for (String filePath : duplicateFileFinder.getFileHashesMap().get(selectedValue))
+                        {
+                            resultDetailsListModel.addElement(filePath);
+                        }
+                    }
+                }
             }
         });
-        scrollPaneListResults.setViewportView(listResults);
+
+        resultDetailsListModel = new DefaultListModel<>();
+        listResultDetails.setModel(resultDetailsListModel);
+        scrollPaneResultDetails.setViewportView(listResultDetails);
+        listResultDetails.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        listResultDetails.addListSelectionListener(new ListSelectionListener()
+        {
+            @Override
+            public void valueChanged(ListSelectionEvent e)
+            {
+                if (!e.getValueIsAdjusting())
+                {
+                    List selectedValues = ((JList)e.getSource()).getSelectedValuesList();
+
+                    if (selectedValues.isEmpty())
+                    {
+                        buttonShow.setEnabled(false);
+                        buttonDelete.setEnabled(false);
+                    }
+                    else
+                    {
+                        if (selectedValues.size() == 1)
+                        {
+                            buttonShow.setEnabled(true);
+                        }
+                        else
+                        {
+                            buttonShow.setEnabled(false);
+                        }
+                        buttonDelete.setEnabled(true);
+                    }
+                }
+            }
+        });
+
+        GroupLayout panelResultsDetailLayout = new GroupLayout(panelResultsDetail);
+        panelResultsDetail.setLayout(panelResultsDetailLayout);
+        panelResultsDetailLayout.setHorizontalGroup(
+                panelResultsDetailLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(panelResultsDetailLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(buttonShow, javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addGap(0, 0, Short.MAX_VALUE)
+                                        .addComponent(buttonDelete, javax.swing.GroupLayout.Alignment.TRAILING)
+                        )
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(scrollPaneResultDetails, GroupLayout.PREFERRED_SIZE, 500, GroupLayout.PREFERRED_SIZE)
+        );
+        panelResultsDetailLayout.setVerticalGroup(
+                panelResultsDetailLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(panelResultsDetailLayout.createSequentialGroup()
+                                        .addComponent(buttonShow)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+//                                        .addGap(0, 0, Short.MAX_VALUE)
+                                        .addComponent(buttonDelete)
+//                                        .addGap(0, 0, Short.MAX_VALUE)
+                        )
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(scrollPaneResultDetails, GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+        );
+
+        GroupLayout panelResultsLayout = new GroupLayout(panelResults);
+        panelResults.setLayout(panelResultsLayout);
+        panelResultsLayout.setHorizontalGroup(
+                panelResultsLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(panelResultsLayout.createSequentialGroup()
+                                .addComponent(labelResults)
+                                .addGap(0, 0, Short.MAX_VALUE))
+                        .addGroup(panelResultsLayout.createSequentialGroup()
+                                .addComponent(scrollPaneResults, GroupLayout.PREFERRED_SIZE, 200, GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(panelResultsDetail, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        panelResultsLayout.setVerticalGroup(
+                panelResultsLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(panelResultsLayout.createSequentialGroup()
+                                .addComponent(labelResults)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(panelResultsLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                                        .addComponent(scrollPaneResults, GroupLayout.DEFAULT_SIZE, 190, Short.MAX_VALUE)
+                                        .addComponent(panelResultsDetail, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short
+                                                .MAX_VALUE)))
+        );
+
+        GroupLayout panelRunLayout = new GroupLayout(panelRun);
+        panelRun.setLayout(panelRunLayout);
+        panelRunLayout.setHorizontalGroup(
+                panelRunLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(panelRunLayout.createSequentialGroup()
+                                .addComponent(labelScanProgress)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(buttonProgressDetails))
+                        .addComponent(scrollPaneProgressResults)
+                        .addComponent(separatorProgressResults, GroupLayout.Alignment.TRAILING)
+                        .addComponent(panelResults, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        panelRunLayout.setVerticalGroup(
+                panelRunLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGroup(panelRunLayout.createSequentialGroup()
+                                .addGroup(panelRunLayout.createParallelGroup(GroupLayout.Alignment.BASELINE)
+                                        .addComponent(labelScanProgress)
+                                        .addComponent(buttonProgressDetails))
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(scrollPaneProgressResults, GroupLayout.PREFERRED_SIZE, 250, GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(separatorProgressResults, GroupLayout.PREFERRED_SIZE, 10, GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(panelResults, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
         GroupLayout panelAllLayout = new GroupLayout(panelAll);
         panelAll.setLayout(panelAllLayout);
         panelAllLayout.setHorizontalGroup(
                 panelAllLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                        .addGroup(panelAllLayout.createSequentialGroup()
+                        .addGroup(GroupLayout.Alignment.TRAILING, panelAllLayout.createSequentialGroup()
                                 .addContainerGap()
-                                .addGroup(panelAllLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                        .addComponent(separator, GroupLayout.Alignment.TRAILING)
-                                        .addGroup(panelAllLayout.createSequentialGroup()
+                                .addGroup(panelAllLayout.createParallelGroup(GroupLayout.Alignment.TRAILING)
+                                        .addComponent(panelRun, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(separator)
+                                        .addGroup(GroupLayout.Alignment.LEADING, panelAllLayout.createSequentialGroup()
                                                 .addComponent(labelPathToScan)
                                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                                 .addComponent(textFieldPathToScan)
                                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                                 .addComponent(buttonChoosePathToScan))
-                                        .addGroup(panelAllLayout.createSequentialGroup()
-                                                .addComponent(titledPanelOptions, GroupLayout.DEFAULT_SIZE, javax.swing
-                                                        .GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(GroupLayout.Alignment.LEADING, panelAllLayout.createSequentialGroup()
+                                                .addComponent(titledPanelOptions, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE,
+                                                        Short.MAX_VALUE)
                                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(buttonStartScan, GroupLayout.PREFERRED_SIZE, 115, javax.swing
-                                                        .GroupLayout.PREFERRED_SIZE))
-                                        .addGroup(panelAllLayout.createSequentialGroup()
-                                                .addGroup(panelAllLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                                        .addComponent(labelResults)
-                                                        .addComponent(scrollPaneListResults, GroupLayout.PREFERRED_SIZE, 98,
-                                                                GroupLayout.PREFERRED_SIZE))
-                                                .addGap(0, 0, Short.MAX_VALUE)))
+                                                .addComponent(buttonStartScan, GroupLayout.PREFERRED_SIZE, 115, GroupLayout
+                                                        .PREFERRED_SIZE)))
                                 .addContainerGap())
         );
         panelAllLayout.setVerticalGroup(
@@ -230,24 +393,21 @@ public class Gui
                                 .addContainerGap()
                                 .addGroup(panelAllLayout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                                         .addComponent(labelPathToScan)
-                                        .addComponent(textFieldPathToScan, GroupLayout.PREFERRED_SIZE, javax.swing
-                                                .GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(textFieldPathToScan, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE,
+                                                GroupLayout.PREFERRED_SIZE)
                                         .addComponent(buttonChoosePathToScan))
                                 .addGroup(panelAllLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
                                         .addGroup(panelAllLayout.createSequentialGroup()
                                                 .addGap(11, 11, 11)
-                                                .addComponent(buttonStartScan, GroupLayout.PREFERRED_SIZE, 82, javax.swing
-                                                        .GroupLayout.PREFERRED_SIZE))
+                                                .addComponent(buttonStartScan, GroupLayout.PREFERRED_SIZE, 82, GroupLayout.PREFERRED_SIZE))
                                         .addGroup(panelAllLayout.createSequentialGroup()
                                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(titledPanelOptions, GroupLayout.PREFERRED_SIZE, 92, javax.swing
-                                                        .GroupLayout.PREFERRED_SIZE)))
+                                                .addComponent(titledPanelOptions, GroupLayout.PREFERRED_SIZE, 92, GroupLayout
+                                                        .PREFERRED_SIZE)))
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(separator, GroupLayout.PREFERRED_SIZE, 10, GroupLayout.PREFERRED_SIZE)
-                                .addGap(1, 1, 1)
-                                .addComponent(labelResults)
                                 .addPreferredGap(LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(scrollPaneListResults, GroupLayout.DEFAULT_SIZE, 175, Short.MAX_VALUE)
+                                .addComponent(panelRun, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
                                 .addContainerGap())
         );
 
@@ -265,59 +425,13 @@ public class Gui
         pack();
     }
 
-    private void checkBoxHiddenActionPerformed(java.awt.event.ActionEvent evt)
-    {
-        // TODO add your handling code here:
-    }
-
-    private void checkBoxFlatActionPerformed(java.awt.event.ActionEvent evt)
-    {
-        // TODO add your handling code here:
-    }
-
-    private void textFieldMaxFileSizeActionPerformed(java.awt.event.ActionEvent evt)
-    {
-        // TODO add your handling code here:
-    }
-
-    public void addComponentsToPane(final Container pane)
-    {
-        pane.setLayout(flowLayout);
-
-        JLabel labelPathToScan = new JLabel("Path to scan: ");
-        JFileChooser fileChooserPathToScan = new JFileChooser();
-        fileChooserPathToScan.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        fileChooserPathToScan.setAcceptAllFileFilterUsed(false);
-        fileChooserPathToScan.setCurrentDirectory(new File("."));
-
-        JButton buttonScan = new JButton("Scan");
-        JCheckBox optionHiddenFiles = new JCheckBox("Include hidden files");
-
-        pane.add(labelPathToScan);
-        pane.add(fileChooserPathToScan);
-        pane.add(buttonScan);
-        pane.add(optionHiddenFiles);
-    }
-
-    public static void main(String[] args)
+    public static void main(String[] args) throws InstantiationException
     {
         try
         {
             UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
         }
-        catch (UnsupportedLookAndFeelException ex)
-        {
-            logger.error(ex);
-        }
-        catch (IllegalAccessException ex)
-        {
-            logger.error(ex);
-        }
-        catch (InstantiationException ex)
-        {
-            logger.error(ex);
-        }
-        catch (ClassNotFoundException ex)
+        catch (UnsupportedLookAndFeelException | IllegalAccessException | ClassNotFoundException ex)
         {
             logger.error(ex);
         }
@@ -332,9 +446,9 @@ public class Gui
     }
 
     @Override
-    public void actionPerformed(ActionEvent e)
+    public void actionPerformed(ActionEvent actionEvent)
     {
-        if (e.getSource().equals(buttonChoosePathToScan))
+        if (actionEvent.getSource().equals(buttonChoosePathToScan))
         {
             int returnValue = fileChooserPathToScan.showOpenDialog(Gui.this);
             if (returnValue == JFileChooser.APPROVE_OPTION)
@@ -342,24 +456,28 @@ public class Gui
                 File selectedFile = fileChooserPathToScan.getSelectedFile();
                 textFieldPathToScan.setText(selectedFile.getAbsolutePath());
             }
-            else if (returnValue == JFileChooser.CANCEL_OPTION)
-            {
-
-            }
             else if (returnValue == JFileChooser.ERROR_OPTION)
             {
                 logger.error("an error occurred while choosing the directory to scan");
             }
         }
-        else if (e.getSource().equals(buttonStartScan))
+        else if (actionEvent.getSource().equals(buttonStartScan))
         {
-            java.util.List<String> argsList = new ArrayList<>(4);
+            List<String> argsList = new ArrayList<>(4);
             if (textFieldPathToScan.getText() != null && !textFieldPathToScan.getText().isEmpty())
             {
                 // add -t <getText()>
                 argsList.add("-t");
                 argsList.add(textFieldPathToScan.getText());
             }
+            else
+            {
+                JOptionPane.showMessageDialog(this, "Directory path to scan cannot be empty.", "Configuration error", JOptionPane
+                        .ERROR_MESSAGE);
+                return;
+            }
+
+            argsList.add("-v");
 
             if (!checkBoxNotFlat.isSelected())
             {
@@ -375,7 +493,7 @@ public class Gui
 
             if (textFieldMaxFileSize.getText() != null && !textFieldMaxFileSize.getText().isEmpty())
             {
-                int byteMultiplier = 1024;
+                long byteMultiplier = 1;
                 if (String.valueOf(comboBoxFileSizes.getSelectedItem()).equals(MaxFileSizes.KILO_BYTE.getValue()))
                 {
                     byteMultiplier *= 1024;
@@ -392,13 +510,131 @@ public class Gui
                 argsList.add("-m");
                 argsList.add(String.valueOf(Integer.valueOf(textFieldMaxFileSize.getText()) * byteMultiplier));
             }
+            else
+            {
+                JOptionPane.showMessageDialog(this, "Maximum file size must be specified.", "Configuration error", JOptionPane
+                        .ERROR_MESSAGE);
+                return;
+            }
+
             String[] args = argsList.toArray(new String[4]);
 
-            DuplicateFileFinder duplicateFileFinder = new DuplicateFileFinder(args);
-            duplicateFileFinder.scanDirectory();
+            buttonStartScan.setEnabled(false);
+            textAreaProgressResults.setText("");
+            labelScanProgress.setText("Scan in progress...");
+            panelResults.setVisible(false);
+            panelRun.setVisible(true);
+            resultsListModel.clear();
 
-            // TODO replace this with something like: add found duplicate groups to gui etc.
-            DuplicateFileFinder.displayResults(duplicateFileFinder);
+            duplicateFileFinder.reInitializeConfig(args);
+
+            SwingWorker<Integer, Integer> swingWorker = new SwingWorker<Integer, Integer>()
+            {
+                @Override
+                protected Integer doInBackground() throws Exception
+                {
+                    duplicateFileFinder.scanDirectory();
+                    return duplicateFileFinder.getFileCount();
+                }
+            };
+
+            swingWorker.addPropertyChangeListener(
+                    new PropertyChangeListener()
+                    {
+                        public void propertyChange(PropertyChangeEvent evt)
+                        {
+                            if (evt.getPropertyName().equals("state") && evt.getNewValue().equals(SwingWorker.StateValue.DONE))
+                            {
+                                buttonStartScan.setEnabled(true);
+                                labelScanProgress.setText(String.format("Scan finished: %d files scanned.",
+                                        duplicateFileFinder.getFileCount()));
+                                panelResults.setVisible(true);
+
+                                duplicateFileFinder.processScannedFileMap();
+
+                                if (duplicateFileFinder.getFileHashesMap().isEmpty())
+                                {
+                                    labelResults.setText("No duplicated files found.");
+                                    scrollPaneResults.setVisible(false);
+                                    panelResultsDetail.setVisible(false);
+                                    buttonShow.setVisible(false);
+                                    buttonDelete.setVisible(false);
+                                    return;
+                                }
+                                else
+                                {
+                                    labelResults.setText("Duplicated files found:");
+                                    scrollPaneResults.setVisible(true);
+                                    panelResultsDetail.setVisible(true);
+                                    buttonShow.setVisible(true);
+                                    buttonDelete.setVisible(true);
+                                }
+
+                                for (Map.Entry<String, List<String>> entry : duplicateFileFinder.getFileHashesMap().entrySet())
+                                {
+                                    resultsListModel.addElement(entry.getKey());
+                                }
+                            }
+                        }
+                    });
+
+            swingWorker.execute();
+        }
+        else if (actionEvent.getSource().equals(buttonProgressDetails))
+        {
+            if (buttonProgressDetails.getText().equals("Hide Details"))
+            {
+                scrollPaneProgressResults.setVisible(false);
+                buttonProgressDetails.setText("Show Details");
+            }
+            else if (buttonProgressDetails.getText().equals("Show Details"))
+            {
+                scrollPaneProgressResults.setVisible(true);
+                buttonProgressDetails.setText("Hide Details");
+            }
+        }
+        else if (actionEvent.getSource().equals(buttonShow))
+        {
+            if (listResultDetails.isSelectionEmpty())
+            {
+                return;
+            }
+            String pathToFile = resultDetailsListModel.get(listResultDetails.getSelectedIndex());
+            try
+            {
+                Desktop.getDesktop().open(new File(pathToFile));
+            }
+            catch (IOException e)
+            {
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Error opening file", JOptionPane.ERROR_MESSAGE);
+                logger.error(e);
+            }
+        }
+        else if (actionEvent.getSource().equals(buttonDelete))
+        {
+            if (listResultDetails.isSelectionEmpty())
+            {
+                return;
+            }
+            String pathToFile = resultDetailsListModel.get(listResultDetails.getSelectedIndex());
+            int confirmDialog = JOptionPane.showConfirmDialog(this, String.format("Do you really want to delete the file %s?", pathToFile),
+                    "Delete file", JOptionPane.OK_CANCEL_OPTION);
+
+            if (confirmDialog == JOptionPane.OK_OPTION)
+            {
+                File file = new File(pathToFile);
+                if (file.delete())
+                {
+                    resultDetailsListModel.remove(listResultDetails.getSelectedIndex());
+                }
+                else
+                {
+                    String message = String.format("File could not be deleted: %s", pathToFile);
+                    JOptionPane.showMessageDialog(this, message, "Error deleting file",
+                            JOptionPane.ERROR_MESSAGE);
+                    logger.error(message);
+                }
+            }
         }
     }
 
@@ -406,7 +642,7 @@ public class Gui
     {
         KILO_BYTE("kB"),
         MEGA_BYTE("MB"),
-        GIGA_BYTE("");
+        GIGA_BYTE("GB");
 
         private String value;
 
