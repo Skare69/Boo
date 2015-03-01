@@ -271,6 +271,15 @@ Full-Width Styles
   margin: 0 auto;
 }
 
+.inner img {
+    border: none;
+    padding: 0;
+    margin: 15px 0 0 0;
+    float: right;
+    box-shadow: none;
+    -moz-box-shadow: none;
+}
+
 #forkme_banner {
   display: block;
   position: absolute;
@@ -320,7 +329,7 @@ Full-Width Styles
   width: 210px;
   z-index: 10;
   bottom: -40px;
-  right: 0;
+    left: 0;
   height: 70px;
   background: url('../images/icon_download.png') no-repeat 0% 90%;
 }
