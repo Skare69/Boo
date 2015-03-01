@@ -37,6 +37,7 @@
             <properties>
                 <header-type>console</header-type>
                 <main-class>com.github.skare69.boo.DuplicateFileFinder</main-class>
+                <type-extension>-cli</type-extension>
             </properties>
         </profile>
         <profile>
@@ -44,6 +45,7 @@
             <properties>
                 <header-type>gui</header-type>
                 <main-class>com.github.skare69.boo.Gui</main-class>
+                <type-extension/>
             </properties>
         </profile>
     </profiles>
@@ -95,7 +97,7 @@
                         <configuration>
                             <headerType>${header-type}</headerType>
                             <jar>${project.build.directory}/${project.artifactId}-jar-with-dependencies.jar</jar>
-                            <outfile>${project.build.directory}/${project.build.finalName}.exe</outfile>
+                            <outfile>${project.build.directory}/${project.build.finalName}${type-extension}.exe</outfile>
                             <downloadUrl>http://java.com/download</downloadUrl>
                             <classPath>
                                 <mainClass>${main-class}</mainClass>
